@@ -1,4 +1,16 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  uuid,
+  decimal,
+  serial,
+  integer,
+  varchar,
+  pgEnum,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -59,3 +71,62 @@ export const verification = pgTable("verification", {
     () => /* @__PURE__ */ new Date()
   ),
 });
+
+export const portfolio = pgTable("portfolio", {
+  id: serial("id").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => user.id),
+  cash: decimal("cash", { precision: 18, scale: 2 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// what is the difference between .notNull and defaulyNOw
+
+export const holdings = pgTable("holdings", {
+  id: serial("id").primaryKey(),
+  portfolioId: integer("portfolio_id")
+    .notNull()
+    .references(() => portfolio.id),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  quantity: decimal("quantity", { precision: 18, scale: 8 }).default("0"), //how much coin
+  avgBuyPrice: decimal("avg_buy_price", { precision: 18, scale: 2 }).default(
+    "0"
+  ),
+});
+
+export const transactionTypeEnum = pgEnum("transaction_type", [
+  "buy",
+  "sell",
+  "deposit",
+  "withdraw",
+]);
+
+export const transactions = pgTable("transactions", {
+  id: serial("id").primaryKey(),
+  portfolioId: integer("portfolio_id")
+    .notNull()
+    .references(() => portfolio.id),
+  type: transactionTypeEnum("type").notNull(), //"buy" | "sell" | "deposit" | "withdraw"
+  symbol: varchar("symbol", { length: 20 }),
+  quantity: decimal("quantity", { precision: 18, scale: 8 }), //how much coin
+  price: decimal("amount_usd", { precision: 18, scale: 2 }), //price per coin
+  amountUsd: decimal("amount_usd", { precision: 18, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+//Relations
+
+export const userRelations = relations(user, ({ many }) => ({
+  portfolio: many(portfolio),
+}));
+
+export const portfolioRelations = relations(portfolio, ({ one, many }) => ({
+  user: one(user, {
+    fields: [portfolio.userId],
+    references: [user.id],
+  }),
+  holdings: many(holdings),
+  transactions: many(transactions),
+}));

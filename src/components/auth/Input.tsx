@@ -8,6 +8,8 @@ interface InputProps {
   placeholder?: string;
   register: UseFormRegisterReturn;
   error?: FieldError;
+  step?: string;
+  disabled?: boolean;
 }
 
 const Input = ({
@@ -17,6 +19,8 @@ const Input = ({
   placeholder,
   register,
   error,
+  step,
+  disabled,
 }: InputProps) => {
   return (
     <div>
@@ -25,10 +29,12 @@ const Input = ({
         {...register}
         id={id}
         type={type}
+        step={step}
         placeholder={placeholder}
         className={`outline-none border-[1px] py-2 px-3 w-full rounded-md mt-2
                ${error ? "border-rose-500" : "border-neutral-400"}
-                `}
+                ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+        disabled={disabled}
       />
       {error && <p className="text-rose-400">{error.message}</p>}
     </div>

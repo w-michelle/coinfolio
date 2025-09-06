@@ -1,0 +1,211 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
+import React, {
+  startTransition,
+  useActionState,
+  useEffect,
+  useState,
+} from "react";
+import { useForm } from "react-hook-form";
+import z from "zod";
+import Input from "@/components/auth/Input";
+import { FaAngleDown } from "react-icons/fa";
+import { portfolioOptions } from "@/data/queries";
+import { sellAsset } from "./sellAsset";
+
+interface HoldingProps {
+  id: number;
+  portfolioId: number;
+  symbol: string;
+  quantity: string | null;
+  avgBuyPrice: string | null;
+}
+
+interface PortfolioProps {
+  id: number;
+  userId: string;
+  balance: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+  holdings: HoldingProps[];
+}
+
+interface CryptoListProps {
+  ID: number;
+  NAME: string;
+  PRICE_USD: number;
+  SYMBOL: string;
+  LOGO_URL: string;
+}
+
+export const SellForm = ({
+  data,
+  list,
+}: {
+  data: PortfolioProps;
+  list: CryptoListProps[];
+}) => {
+  const queryClient = useQueryClient();
+
+  const [qtyInHolding, setQtyInHolding] = useState<number | null>(null);
+  const [price, setPrice] = useState<number | null>(null);
+  const [total, setTotal] = useState(0);
+
+  const formSchema = z
+    .object({
+      symbol: z.string().min(1, { message: "Please select a crypto asset" }),
+      quantity: z
+        .number({ message: "Quantity must be a number" })
+        .positive({ message: "Quantity must be greater than 0" })
+        .refine(
+          (val) =>
+            Number.isFinite(val) && val.toString().split(".")[1]?.length <= 8,
+          { message: "Maximum 8 decimal places allowed" }
+        ),
+      price: z.number(),
+    })
+    .refine(
+      (data) => {
+        if (qtyInHolding == null) return true;
+        return data.quantity <= qtyInHolding;
+      },
+      {
+        message: "You cannot sell more than you own",
+        path: ["quantity"],
+      }
+    );
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      symbol: "",
+      quantity: 0,
+    },
+  });
+
+  const [state, execute, isPending] = useActionState(sellAsset, null);
+
+  const onSubmit = (fdata: z.infer<typeof formSchema>) => {
+    const formData = new FormData();
+    formData.append("symbol", fdata.symbol);
+    formData.append("quantity", fdata.quantity.toString());
+    formData.append("price", fdata.price.toString()); //formData.append expects string or blob not a number for price and quantity
+    formData.append("total", total.toString());
+
+    startTransition(() => {
+      execute(formData);
+      reset();
+      setQtyInHolding(null);
+      setPrice(null);
+      setTotal(0);
+    });
+  };
+  const handleTicker = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    //sets the quantity user has for specific asset
+    const symbol = e.target.value;
+    if (!symbol) {
+      setQtyInHolding(null);
+    } else {
+      console.log(!symbol);
+      const item = data.holdings.find((i) => i.symbol === symbol);
+      if (item) setQtyInHolding(Number(item.quantity));
+
+      const currentPrice = list.find((i) => i.SYMBOL === symbol);
+      if (currentPrice) setPrice(Number(currentPrice.PRICE_USD));
+    }
+
+    //also need to filter out the current price of the symbol selected
+  };
+
+  const handleTotal = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+
+    const calculateTotal = Number(val) * Number(price);
+    setTotal(calculateTotal);
+  };
+
+  useEffect(() => {
+    if (state?.success) {
+      queryClient.invalidateQueries({
+        queryKey: portfolioOptions(data.userId).queryKey,
+      });
+    }
+  }, [state?.success]);
+
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex flex-col gap-4"
+    >
+      <h3 className="text-neutral-700 font-bold tracking-wider">SELL</h3>
+      <div>
+        <label htmlFor="">Balance</label>
+        <div className="outline-none border-[1px] py-2 px-3 w-full rounded-md mt-2 border-neutral-400">
+          ${data?.balance}
+        </div>
+      </div>
+      <div className="relative">
+        <label htmlFor="">Ticker</label>
+        <select
+          {...register("symbol")}
+          onChange={(e) => handleTicker(e)}
+          className="relative outline-none border-[1px] py-2 px-3 w-full rounded-md border-neutral-400 appearance-none"
+        >
+          <option value="">-- Select a ticker --</option>
+          {data.holdings.map((item) => (
+            <option
+              key={item.id}
+              value={item.symbol}
+            >
+              {item.symbol}
+            </option>
+          ))}
+        </select>
+        <span className="pointer-events-none absolute right-3 translate-y-1/6 inset-y-0 flex items-center">
+          <FaAngleDown />
+        </span>
+      </div>
+      {price && (
+        <div>
+          <label htmlFor="">Price</label>
+          <input
+            value={price}
+            {...register("price", { valueAsNumber: true })}
+            className="outline-none border-[1px] py-2 px-3 w-full rounded-md mt-2 border-neutral-400"
+            id="price"
+            readOnly
+          />
+        </div>
+      )}
+
+      <Input
+        type="number"
+        label="Quantity"
+        step="any"
+        placeholder="ex. 10000"
+        id="quantity"
+        register={register("quantity", {
+          valueAsNumber: true,
+          onChange: (e) => handleTotal(e),
+        })}
+        error={errors.quantity}
+        disabled={!price}
+      />
+      <p className="text-xs text-neutral-600">Current Shares: {qtyInHolding}</p>
+      <p className="font-bold tracking-wider">Total: ${total}</p>
+      <button
+        type="submit"
+        className="py-2 px-4 bg-cgreen text-black hover:bg-cdarkGreen hover:text-cgreen hover:cursor-pointer"
+      >
+        Confirm
+      </button>
+      {isPending && <p>Processing...</p>}
+      {state?.error && <p className="text-red-500">{state.error}</p>}
+    </form>
+  );
+};

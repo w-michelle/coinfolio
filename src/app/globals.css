@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #09090b;
+  --foreground: #fff;
+  --color-cgray: #0a0a0a;
+  --color-cwhite: #e4e4e7;
+  --color-cgreen: #b1cc7a;
+  --color-cdarkGreen: #363e25;
 }
 
 @theme inline {
@@ -10,17 +14,37 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-cgray: #202023;
+  --color-cwhite: #e4e4e7;
+  --color-cgreen: #b1cc7a;
+  --color-cdarkGreen: #363e25;
 }
-
+/* 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
-}
+} */
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: var(--color-cwhite);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* For newer browsers that support it */
+input[type="number"] {
+  appearance: textfield;
 }

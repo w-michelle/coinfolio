@@ -10,6 +10,7 @@ import Input from "./Input";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createPortfolio } from "@/data/db";
 
 const SignInView = () => {
   const [pending, setPending] = useState(false);
@@ -75,7 +76,7 @@ const SignInView = () => {
     <div className="bg-[#262626] text-white p-8 rounded-lg">
       <div className="flex flex-col items-center justify-center">
         <Image
-          src="/coinfolioLogo.png"
+          src="/cLogo.png"
           alt="Coinfolio logo"
           width={150}
           height={100}

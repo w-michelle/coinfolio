@@ -74,10 +74,10 @@ export const verification = pgTable("verification", {
 
 export const portfolio = pgTable("portfolio", {
   id: serial("id").primaryKey(),
-  userId: uuid("user_id")
+  userId: text("user_id")
     .notNull()
     .references(() => user.id),
-  cash: decimal("cash", { precision: 18, scale: 2 }).default("0"),
+  balance: decimal("balance", { precision: 18, scale: 2 }).default("0"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -111,7 +111,7 @@ export const transactions = pgTable("transactions", {
   type: transactionTypeEnum("type").notNull(), //"buy" | "sell" | "deposit" | "withdraw"
   symbol: varchar("symbol", { length: 20 }),
   quantity: decimal("quantity", { precision: 18, scale: 8 }), //how much coin
-  price: decimal("amount_usd", { precision: 18, scale: 2 }), //price per coin
+  price: decimal("price", { precision: 18, scale: 2 }), //price per coin
   amountUsd: decimal("amount_usd", { precision: 18, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -129,4 +129,18 @@ export const portfolioRelations = relations(portfolio, ({ one, many }) => ({
   }),
   holdings: many(holdings),
   transactions: many(transactions),
+}));
+
+export const holdingsRelations = relations(holdings, ({ one }) => ({
+  portfolio: one(portfolio, {
+    fields: [holdings.portfolioId],
+    references: [portfolio.id],
+  }),
+}));
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  portfolio: one(portfolio, {
+    fields: [transactions.portfolioId],
+    references: [portfolio.id],
+  }),
 }));
